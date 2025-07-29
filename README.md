@@ -10,12 +10,6 @@ A simple and fun Ping Pong game built using HTML, CSS, and JavaScript. Move the 
 - Game over detection
 - Smooth animations
 
-## 📸 Demo
-
-![Game Preview](screenshot.png) <!-- Replace with actual screenshot path if available -->
-
-**[🔗 Live Demo](https://yourusername.github.io/ping-pong-game/)** <!-- Replace with your GitHub Pages link if deployed -->
-
 ## 🚀 How to Play
 
 1. Use the keyboard arrows (⬆️ ⬇️) or key (W, S) to move the paddle.
