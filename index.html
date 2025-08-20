@@ -1,71 +1,111 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Basic Pong HTML Game</title>
+  <title>Pong Game</title>
   <meta charset="UTF-8">
   <style>
-  html, body {
-    height: 100%;
-    margin: 0;
-  }
-
-  body {
-    background: black;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    body {
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+    #game {
+      border: 4px solid #fff;
+      border-radius: 10px;
+      background: #000;
+      box-shadow: 0 0 20px rgba(255,255,255,0.3);
+    }
+    #controls {
+      margin-top: 15px;
+      text-align: center;
+    }
+    #playAgain {
+      display: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #00bcd4;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    #playAgain:hover {
+      background: #0288d1;
+    }
+    /* 🎵 Floating mute/unmute icon */
+    #muteBtn {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      font-size: 26px;
+      background: rgba(0,0,0,0.5);
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+    #muteBtn:hover {
+      background: rgba(0,0,0,0.8);
+    }
   </style>
 </head>
 <body>
-<canvas width="750" height="585" id="game"></canvas>
+  <div style="text-align:center; position: relative;">
+    <canvas width="750" height="585" id="game"></canvas>
+    <div id="controls">
+      <button id="playAgain">Play Again</button>
+    </div>
+    <button id="muteBtn">🔊</button>
+  </div>
 <script>
 const canvas = document.getElementById('game');
 const context = canvas.getContext('2d');
 const grid = 15;
-const paddleHeight = grid * 5; // 80
+const paddleHeight = grid * 5;
 const maxPaddleY = canvas.height - grid - paddleHeight;
 
-var paddleSpeed = 6;
-var ballSpeed = 5;
+let paddleSpeed = 6;
+let ballSpeed = 5;
+let leftScore = 0;
+let rightScore = 0;
+let gameOver = false;
+let winner = "";
+let muted = false;
+let countdown = 0; 
+let countdownScale = 1;
 
-const leftPaddle = {
-  // start in the middle of the game on the left side
-  x: grid * 2,
-  y: canvas.height / 2 - paddleHeight / 2,
-  width: grid,
-  height: paddleHeight,
-
-  // paddle velocity
-  dy: 0
+// 🎵 Sound effects + background music
+const sounds = {
+  paddle: new Audio("https://actions.google.com/sounds/v1/foley/wood_plank_flicks.ogg"),
+  wall: new Audio("https://actions.google.com/sounds/v1/impacts/metal_clank.ogg"),
+  score: new Audio("https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg"),
+  gameover: new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"),
+  music: new Audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3")
 };
-const rightPaddle = {
-  // start in the middle of the game on the right side
-  x: canvas.width - grid * 3,
-  y: canvas.height / 2 - paddleHeight / 2,
-  width: grid,
-  height: paddleHeight,
+sounds.music.loop = true;
+sounds.music.volume = 0.3;
 
-  // paddle velocity
-  dy: 0
-};
-const ball = {
-  // start in the middle of the game
-  x: canvas.width / 2,
-  y: canvas.height / 2,
-  width: grid,
-  height: grid,
+function playSound(sound) {
+  if (!muted) {
+    sound.currentTime = 0;
+    sound.play();
+  }
+}
 
-  // keep track of when need to reset the ball position
-  resetting: false,
+const leftPaddle = { x: grid * 2, y: canvas.height / 2 - paddleHeight / 2, width: grid, height: paddleHeight, dy: 0 };
+const rightPaddle = { x: canvas.width - grid * 3, y: canvas.height / 2 - paddleHeight / 2, width: grid, height: paddleHeight, dy: 0 };
+const ball = { x: canvas.width / 2, y: canvas.height / 2, width: grid, height: grid, resetting: false, dx: ballSpeed, dy: -ballSpeed };
 
-  // ball velocity (start going to the top-right corner)
-  dx: ballSpeed,
-  dy: -ballSpeed
-};
-
-// check for collision between two objects using axis-aligned bounding box (AABB)
-// @see https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
 function collides(obj1, obj2) {
   return obj1.x < obj2.x + obj2.width &&
          obj1.x + obj1.width > obj2.x &&
@@ -73,126 +113,221 @@ function collides(obj1, obj2) {
          obj1.y + obj1.height > obj2.y;
 }
 
-// game loop
-function loop() {
+function resetGame() {
+  leftScore = 0;
+  rightScore = 0;
+  ball.x = canvas.width / 2;
+  ball.y = canvas.height / 2;
+  ball.dx = ballSpeed;
+  ball.dy = -ballSpeed;
+  gameOver = false;
+  winner = "";
+  document.getElementById("playAgain").style.display = "none";
   requestAnimationFrame(loop);
-  context.clearRect(0,0,canvas.width,canvas.height);
+  if (!muted) sounds.music.play();
+  startCountdown(() => {});
+}
 
-  // move paddles by their velocity
-  leftPaddle.y += leftPaddle.dy;
-  rightPaddle.y += rightPaddle.dy;
+function drawGameOver() {
+  context.fillStyle = "rgba(0,0,0,0.7)";
+  context.fillRect(0, 0, canvas.width, canvas.height);
 
-  // prevent paddles from going through walls
-  if (leftPaddle.y < grid) {
-    leftPaddle.y = grid;
-  }
-  else if (leftPaddle.y > maxPaddleY) {
-    leftPaddle.y = maxPaddleY;
-  }
+  context.fillStyle = "white";
+  context.font = "50px Arial Black";
+  context.textAlign = "center";
+  context.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 30);
 
-  if (rightPaddle.y < grid) {
-    rightPaddle.y = grid;
-  }
-  else if (rightPaddle.y > maxPaddleY) {
-    rightPaddle.y = maxPaddleY;
-  }
+  context.font = "28px Arial";
+  context.fillText(`${winner} Wins!`, canvas.width / 2, canvas.height / 2 + 20);
+}
 
-  // draw paddles
-  context.fillStyle = 'white';
-  context.fillRect(leftPaddle.x, leftPaddle.y, leftPaddle.width, leftPaddle.height);
-  context.fillRect(rightPaddle.x, rightPaddle.y, rightPaddle.width, rightPaddle.height);
+function drawCountdown() {
+  if (countdown > 0) {
+    context.fillStyle = "rgba(0,0,0,0.5)";
+    context.fillRect(0, 0, canvas.width, canvas.height);
 
-  // move ball by its velocity
-  ball.x += ball.dx;
-  ball.y += ball.dy;
+    context.save();
+    context.translate(canvas.width / 2, canvas.height / 2);
+    context.scale(countdownScale, countdownScale);
 
-  // prevent ball from going through walls by changing its velocity
-  if (ball.y < grid) {
-    ball.y = grid;
-    ball.dy *= -1;
-  }
-  else if (ball.y + grid > canvas.height - grid) {
-    ball.y = canvas.height - grid * 2;
-    ball.dy *= -1;
-  }
+    context.fillStyle = "yellow";
+    context.font = "80px Arial Black";
+    context.textAlign = "center";
+    context.fillText(countdown === 0 ? "GO!" : countdown, 0, 25);
 
-  // reset ball if it goes past paddle (but only if we haven't already done so)
-  if ( (ball.x < 0 || ball.x > canvas.width) && !ball.resetting) {
-    ball.resetting = true;
-
-    // give some time for the player to recover before launching the ball again
-    setTimeout(() => {
-      ball.resetting = false;
-      ball.x = canvas.width / 2;
-      ball.y = canvas.height / 2;
-    }, 400);
-  }
-
-  // check to see if ball collides with paddle. if they do change x velocity
-  if (collides(ball, leftPaddle)) {
-    ball.dx *= -1;
-
-    // move ball next to the paddle otherwise the collision will happen again
-    // in the next frame
-    ball.x = leftPaddle.x + leftPaddle.width;
-  }
-  else if (collides(ball, rightPaddle)) {
-    ball.dx *= -1;
-
-    // move ball next to the paddle otherwise the collision will happen again
-    // in the next frame
-    ball.x = rightPaddle.x - ball.width;
-  }
-
-  // draw ball
-  context.fillRect(ball.x, ball.y, ball.width, ball.height);
-
-  // draw walls
-  context.fillStyle = 'lightgrey';
-  context.fillRect(0, 0, canvas.width, grid);
-  context.fillRect(0, canvas.height - grid, canvas.width, canvas.height);
-
-  // draw dotted line down the middle
-  for (let i = grid; i < canvas.height - grid; i += grid * 2) {
-    context.fillRect(canvas.width / 2 - grid / 2, i, grid, grid);
+    context.restore();
   }
 }
 
-// listen to keyboard events to move the paddles
+function startCountdown(callback) {
+  countdown = 3;
+  countdownScale = 1;
+  let interval = setInterval(() => {
+    countdownScale = 1.8;
+    setTimeout(() => countdownScale = 1, 200);
+
+    if (countdown > 1) {
+      countdown--;
+    } else {
+      clearInterval(interval);
+      setTimeout(() => {
+        countdown = 0;
+        callback();
+      }, 1000);
+    }
+  }, 1000);
+}
+
+function drawScoreboard() {
+  // background bar
+  context.fillStyle = "rgba(0, 0, 0, 0.6)";
+  context.fillRect(0, 0, canvas.width, 70);
+
+  // divider line
+  context.strokeStyle = "white";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(canvas.width / 2, 0);
+  context.lineTo(canvas.width / 2, 70);
+  context.stroke();
+
+  // scores
+  context.fillStyle = "white";
+  context.font = "28px Arial Black";
+  context.textAlign = "center";
+  context.fillText(leftScore, canvas.width / 4, 35);
+  context.fillText(rightScore, 3 * canvas.width / 4, 35);
+
+  // player labels
+  context.font = "16px Arial";
+  context.fillStyle = "#ccc";
+  context.fillText("Player 1", canvas.width / 4, 60);
+  context.fillText("Player 2", 3 * canvas.width / 4, 60);
+}
+
+function loop() {
+  if (gameOver) {
+    drawGameOver();
+    return;
+  }
+
+  requestAnimationFrame(loop);
+  context.clearRect(0,0,canvas.width,canvas.height);
+
+  // draw scoreboard first
+  drawScoreboard();
+
+  leftPaddle.y += leftPaddle.dy;
+  rightPaddle.y += rightPaddle.dy;
+
+  if (leftPaddle.y < grid) leftPaddle.y = grid;
+  else if (leftPaddle.y > maxPaddleY) leftPaddle.y = maxPaddleY;
+
+  if (rightPaddle.y < grid) rightPaddle.y = grid;
+  else if (rightPaddle.y > maxPaddleY) rightPaddle.y = maxPaddleY;
+
+  context.fillStyle = '#00e5ff';
+  context.fillRect(leftPaddle.x, leftPaddle.y, leftPaddle.width, leftPaddle.height);
+  context.fillStyle = '#ff4081';
+  context.fillRect(rightPaddle.x, rightPaddle.y, rightPaddle.width, rightPaddle.height);
+
+  if (countdown === 0) {
+    ball.x += ball.dx;
+    ball.y += ball.dy;
+  }
+
+  if (ball.y < grid) { 
+    ball.y = grid; 
+    ball.dy *= -1; 
+    playSound(sounds.wall);
+  }
+  else if (ball.y + grid > canvas.height - grid) { 
+    ball.y = canvas.height - grid * 2; 
+    ball.dy *= -1; 
+    playSound(sounds.wall);
+  }
+
+  if ((ball.x < 0 || ball.x > canvas.width) && !ball.resetting) {
+    ball.resetting = true;
+
+    if (ball.x < 0) { 
+      rightScore++; 
+      if (rightScore >= 5) { winner = "Player 2"; }
+    } else { 
+      leftScore++; 
+      if (leftScore >= 5) { winner = "Player 1"; }
+    }
+    playSound(sounds.score);
+
+    if (leftScore >= 5 || rightScore >= 5) {
+      gameOver = true;
+      document.getElementById("playAgain").style.display = "inline-block";
+      playSound(sounds.gameover);
+      sounds.music.pause();
+    } else {
+      setTimeout(() => {
+        ball.resetting = false;
+        ball.x = canvas.width / 2;
+        ball.y = canvas.height / 2;
+        ball.dx = ballSpeed * (Math.random() > 0.5 ? 1 : -1);
+        ball.dy = ballSpeed * (Math.random() > 0.5 ? 1 : -1);
+        startCountdown(() => {});
+      }, 500);
+    }
+  }
+
+  if (collides(ball, leftPaddle)) { 
+    ball.dx *= -1; 
+    ball.x = leftPaddle.x + leftPaddle.width; 
+    playSound(sounds.paddle);
+  }
+  else if (collides(ball, rightPaddle)) { 
+    ball.dx *= -1; 
+    ball.x = rightPaddle.x - ball.width; 
+    playSound(sounds.paddle);
+  }
+
+  context.fillStyle = 'white';
+  context.fillRect(ball.x, ball.y, ball.width, ball.height);
+
+  context.fillStyle = 'lightgrey';
+  context.fillRect(0, canvas.height - grid, canvas.width, canvas.height);
+
+  for (let i = grid; i < canvas.height - grid; i += grid * 2) {
+    context.fillRect(canvas.width / 2 - grid / 2, i, grid, grid);
+  }
+
+  drawCountdown();
+}
+
 document.addEventListener('keydown', function(e) {
-
-  // up arrow key
-  if (e.which === 38) {
-    rightPaddle.dy = -paddleSpeed;
-  }
-  // down arrow key
-  else if (e.which === 40) {
-    rightPaddle.dy = paddleSpeed;
-  }
-
-  // w key
-  if (e.which === 87) {
-    leftPaddle.dy = -paddleSpeed;
-  }
-  // a key
-  else if (e.which === 83) {
-    leftPaddle.dy = paddleSpeed;
-  }
+  if (e.which === 38) rightPaddle.dy = -paddleSpeed;
+  else if (e.which === 40) rightPaddle.dy = paddleSpeed;
+  if (e.which === 87) leftPaddle.dy = -paddleSpeed;
+  else if (e.which === 83) leftPaddle.dy = paddleSpeed;
 });
 
-// listen to keyboard events to stop the paddle if key is released
 document.addEventListener('keyup', function(e) {
-  if (e.which === 38 || e.which === 40) {
-    rightPaddle.dy = 0;
-  }
+  if (e.which === 38 || e.which === 40) rightPaddle.dy = 0;
+  if (e.which === 83 || e.which === 87) leftPaddle.dy = 0;
+});
 
-  if (e.which === 83 || e.which === 87) {
-    leftPaddle.dy = 0;
+document.getElementById("playAgain").addEventListener("click", resetGame);
+
+document.getElementById("muteBtn").addEventListener("click", function() {
+  muted = !muted;
+  if (muted) {
+    this.textContent = "🔇";
+    sounds.music.pause();
+  } else {
+    this.textContent = "🔊";
+    sounds.music.play();
   }
 });
 
-// start the game
+if (!muted) sounds.music.play();
+startCountdown(() => {});
 requestAnimationFrame(loop);
 </script>
 </body>
-</html> 
+</html>
