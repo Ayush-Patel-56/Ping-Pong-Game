@@ -1,52 +1,62 @@
-# 🏓 Ping Pong Game
+# 🎮 Modern Pong Game  
 
+A **modern remake of the classic Pong game** built with **HTML, CSS, and JavaScript**.  
+This project upgrades the retro arcade experience with a clean UI, smooth gameplay, and immersive effects.  
 
-I built a modern version of the classic Pong game using HTML, CSS, and JavaScript.
+---
 
-This project upgrades the retro arcade experience with a professional UI and new features:
+## ✨ Features  
 
+- 🏆 **Scoreboard with player labels** (Player 1 & Player 2)  
+- 🎨 **Professional UI** – gradient background, neon paddles, polished design  
+- ⏳ **Countdown animation** (3…2…1…GO!) before every round  
+- 🔊 **Sound effects** – paddle hit, wall bounce, score, and game over  
+- 🎶 **Background music** with floating **Mute/Unmute button**  
+- 🕹️ **Game Over overlay** with winner announcement  
+- 🔄 **Play Again button** for restarting the match  
 
+---
 
+## 🚀 Tech Stack  
 
-🎮 Features
+- **HTML5 Canvas** → game rendering  
+- **CSS3** → UI design & styling  
+- **JavaScript (ES6)** → game logic, animations, and interactions  
 
--Stylish scoreboard with player labels
+---
 
--Game Over overlay with winner announcement
+## 🎯 How to Play  
 
--Countdown (3…2…1…GO!) before every round
+- **Player 1 (Left Paddle):**  
+  - `W` = Move Up  
+  - `S` = Move Down  
 
--Play Again button for quick restart
+- **Player 2 (Right Paddle):**  
+  - `↑` = Move Up  
+  - `↓` = Move Down  
 
--Sound effects (paddle hit, wall bounce, scoring, game over)
+👉 First player to **5 points wins** 🏅  
 
--Background music with floating Mute/Unmute button
+---
 
--Gradient background + neon paddles for a catchy arcade look
+## 💡 Future Improvements  
 
+- Add AI opponent for single-player mode  
+- Mobile-friendly touch controls  
+- Difficulty levels  
 
+---
 
-🚀 How to Play
+## 🧑‍💻 Author  
 
-1.Use the keyboard arrows (⬆️ ⬇️) or key (W, S) to move the paddle.
+👤 **Ayush Patel**  
+- 🔗 [LinkedIn](https://www.linkedin.com/in/ayush-patel-15429b359/)  
+- 💻 [GitHub](https://github.com/Ayush-Patel-56)  
 
-2.Bounce the ball back using the paddle.
+---
 
-3.Try not to let the ball pass your paddle or it's game over!
+✨ Built to practice **game development with vanilla JavaScript** and modern UI design.  
 
-
-
-🚀 Tech Stack
-
--HTML5 Canvas for rendering
-
--CSS3 for UI styling (scoreboard, buttons, icons)
-
--JavaScript (ES6) for game logic & animations
-
-
-
-✨ This project showcases creative game development with vanilla JavaScript while keeping performance smooth and design modern.
 
    ```bash
    git clone https://github.com/Ayush-Patel-56/Ping-Pong-Game.git
